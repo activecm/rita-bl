@@ -18,5 +18,7 @@ func (b *blacklistedURLType) Type() string { return "url" }
 
 //Validate returns whether or not the given string is a URL
 func (b *blacklistedURLType) ValidateIndex(data string) error {
+	//TODO: Write URL validation
+
 	return nil
 }

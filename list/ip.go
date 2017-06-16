@@ -18,5 +18,6 @@ func (b *blacklistedIPType) Type() string { return "ip" }
 
 //Validate returns whether or not the given string is an IP address
 func (b *blacklistedIPType) ValidateIndex(data string) error {
+	//TODO: Write ipv4 and ipv6 validation
 	return nil
 }

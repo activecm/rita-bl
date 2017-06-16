@@ -18,5 +18,7 @@ func (b *blacklistedHostnameType) Type() string { return "hostname" }
 
 //Validate returns whether or not the given string is a hostname
 func (b *blacklistedHostnameType) ValidateIndex(data string) error {
+	//TODO: Write hostname validation
+
 	return nil
 }

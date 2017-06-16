@@ -6,6 +6,7 @@ import (
 
 	"github.com/ocmdev/rita-blacklist2/database"
 	"github.com/ocmdev/rita-blacklist2/list"
+	"github.com/ocmdev/rita-blacklist2/sources"
 )
 
 type (
@@ -59,15 +60,22 @@ func (b *Blacklist) Update() {
 }
 
 //CheckEntries checks entries of different types against the blacklist database
-func (b *Blacklist) CheckEntries(entryType list.BlacklistedType, indexes []string) map[string][]database.DBEntry {
+func (b *Blacklist) CheckEntries(entryType list.BlacklistedType, indexes ...string) map[string][]database.DBEntry {
 	results := make(map[string][]database.DBEntry)
 	for _, index := range indexes {
+		//check against cached blacklists
 		entries, err := b.DB.FindEntries(entryType, index)
 		if err != nil {
 			b.errorHandler(err)
 			continue
 		}
 		results[index] = entries
+
+		//run remote procedure calls
+		rpcs := sources.GetRPCs(entryType)
+		for _, rpc := range rpcs {
+			results[index] = append(results[index], rpc(index))
+		}
 	}
 	return results
 }
@@ -85,7 +93,7 @@ func createErrorChannel(errHandler func(error)) chan<- error {
 func getListsFromMetas(metas []list.Metadata, errorsOut chan<- error) []list.List {
 	lists := make([]list.List, len(metas))
 	for _, meta := range metas {
-		l := list.CreateList(meta.Name)
+		l := sources.CreateList(meta.Name)
 		if l != nil {
 			lists = append(lists, l)
 		} else {
@@ -98,7 +106,7 @@ func getListsFromMetas(metas []list.Metadata, errorsOut chan<- error) []list.Lis
 func getListsToAdd(registeredLists []list.List) []list.List {
 	var listsToAdd []list.List
 	//check for new list sources
-	for _, availableList := range list.GetAvailableLists() {
+	for _, availableList := range sources.GetAvailableLists() {
 		found := false
 		for _, registeredList := range registeredLists {
 			if availableList == registeredList.GetMetadata().Name {
@@ -107,7 +115,7 @@ func getListsToAdd(registeredLists []list.List) []list.List {
 			}
 		}
 		if !found {
-			listsToAdd = append(listsToAdd, list.CreateList(availableList))
+			listsToAdd = append(listsToAdd, sources.CreateList(availableList))
 		}
 	}
 	return listsToAdd

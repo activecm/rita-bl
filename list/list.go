@@ -28,39 +28,6 @@ type (
 	}
 )
 
-//-----------------------------------------------------------------------------
-
-var listFactories map[string]func() List
-
-func init() {
-	listFactories = make(map[string]func() List)
-}
-
-//BootstrapList adds a list factory to the available factories
-func BootstrapList(name string, factory func() List) {
-	listFactories[name] = factory
-}
-
-//GetAvailableLists returns the available blacklist names
-func GetAvailableLists() []string {
-	lists := make([]string, len(listFactories))
-	for list := range listFactories {
-		lists = append(lists, list)
-	}
-	return lists
-}
-
-//CreateList uses the list of available factories to create a List
-func CreateList(name string) List {
-	factory, ok := listFactories[name]
-	if !ok {
-		return nil
-	}
-	return factory()
-}
-
-//-----------------------------------------------------------------------------
-
 //ShouldFetch returns true if the CacheTiem is up on a given list
 func ShouldFetch(m *Metadata) bool {
 	return time.Now().Unix() > m.LastUpdate+m.CacheTime
