@@ -1,6 +1,8 @@
 package database
 
 import (
+	"sync"
+
 	"github.com/ocmdev/rita-blacklist2/list"
 	mgo "gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
@@ -11,7 +13,7 @@ type MongoDB struct {
 	session *mgo.Session
 }
 
-const database string = "rita-blacklist"
+const database string = "rita-blacklist2"
 const listsCollection string = "lists"
 
 //Init opens the connection to the backing database
@@ -35,29 +37,57 @@ func (m *MongoDB) GetRegisteredLists() ([]list.Metadata, error) {
 }
 
 //RegisterList registers a new blacklist source with the database
-func (m *MongoDB) RegisterList(l list.List) error {
+func (m *MongoDB) RegisterList(l list.Metadata) error {
 	ssn := m.session.Copy()
 	defer ssn.Close()
-	err := ssn.DB(database).C(listsCollection).Insert(l.GetMetadata())
+	err := ssn.DB(database).C(listsCollection).Insert(l)
 	if err != nil {
 		return err
 	}
-	ssn.DB(database).C(l.GetType().Type()).EnsureIndex(mgo.Index{
-		Key:    []string{"Index"},
-		Unique: false,
-	})
-	return err
+
+	collectionNames, err := ssn.DB(database).CollectionNames()
+	if err != nil {
+		return err
+	}
+
+	for _, entryType := range l.Types {
+
+		found := false
+		for _, existingColl := range collectionNames {
+			if existingColl == string(entryType) {
+				found = true
+				break
+			}
+		}
+
+		if !found {
+			ssn.DB(database).C(string(entryType)).Create(&mgo.CollectionInfo{
+				DisableIdIndex: true,
+			})
+			ssn.DB(database).C(string(entryType)).EnsureIndex(mgo.Index{
+				Key:    []string{"$hashed:index"},
+				Unique: false,
+			})
+			ssn.DB(database).C(string(entryType)).EnsureIndex(mgo.Index{
+				Key:    []string{"index", "list"},
+				Unique: true,
+			})
+		}
+	}
+	return nil
 }
 
 //RemoveList removes an existing blaclist source from the database
-func (m *MongoDB) RemoveList(l list.List) error {
+func (m *MongoDB) RemoveList(l list.Metadata) error {
 	ssn := m.session.Copy()
 	defer ssn.Close()
-	_, err := ssn.DB(database).C(l.GetType().Type()).RemoveAll(bson.M{"List": l.GetMetadata().Name})
-	if err != nil {
-		return err
+	for _, entryType := range l.Types {
+		_, err := ssn.DB(database).C(string(entryType)).RemoveAll(bson.M{"list": l.Name})
+		if err != nil {
+			return err
+		}
 	}
-	err = ssn.DB(database).C(listsCollection).Remove(bson.M{"Name": l.GetMetadata().Name})
+	err := ssn.DB(database).C(listsCollection).Remove(bson.M{"name": l.Name})
 	if err != nil {
 		return err
 	}
@@ -65,7 +95,8 @@ func (m *MongoDB) RemoveList(l list.List) error {
 }
 
 //InsertEntries inserts entries from a list into the database
-func (m *MongoDB) InsertEntries(entries <-chan list.BlacklistedEntry, errorsOut chan<- error) {
+func (m *MongoDB) InsertEntries(entryType list.BlacklistedEntryType,
+	entries <-chan list.BlacklistedEntry, wg *sync.WaitGroup, errorsOut chan<- error) {
 	ssn := m.session.Copy()
 	defer ssn.Close()
 	for entry := range entries {
@@ -74,18 +105,19 @@ func (m *MongoDB) InsertEntries(entries <-chan list.BlacklistedEntry, errorsOut 
 			List:      entry.List.GetMetadata().Name,
 			ExtraData: entry.ExtraData,
 		}
-		err := ssn.DB(database).C(entry.List.GetType().Type()).Insert(dbSafe)
+		err := ssn.DB(database).C(string(entryType)).Insert(dbSafe)
 		if err != nil {
 			errorsOut <- err
 		}
 	}
+	wg.Done()
 }
 
 //FindEntries finds entries of a given type and index
-func (m *MongoDB) FindEntries(dataType list.BlacklistedType, index string) ([]DBEntry, error) {
+func (m *MongoDB) FindEntries(dataType list.BlacklistedEntryType, index string) ([]DBEntry, error) {
 	ssn := m.session.Copy()
 	defer ssn.Close()
 	var entries []DBEntry
-	err := ssn.DB(database).C(dataType.Type()).Find(bson.M{"Index": index}).All(&entries)
+	err := ssn.DB(database).C(string(dataType)).Find(bson.M{"index": index}).All(&entries)
 	return entries, err
 }

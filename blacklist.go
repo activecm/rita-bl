@@ -1,18 +1,20 @@
 package blacklist
 
 import (
-	"fmt"
+	"sync"
 	"time"
 
 	"github.com/ocmdev/rita-blacklist2/database"
 	"github.com/ocmdev/rita-blacklist2/list"
-	"github.com/ocmdev/rita-blacklist2/sources"
+	"github.com/ocmdev/rita-blacklist2/sources/rpc"
 )
 
 type (
 	//Blacklist is the main controller for rita-blacklist
 	Blacklist struct {
 		DB           database.Handle
+		lists        []list.List
+		rpcs         map[list.BlacklistedEntryType][]rpc.RPC
 		errorHandler func(error)
 	}
 )
@@ -21,7 +23,9 @@ type (
 //backing database
 func NewBlacklist(connectionString string, errorHandler func(error)) *Blacklist {
 	b := &Blacklist{
-		DB:           nil,
+		DB:           &database.MongoDB{},
+		lists:        make([]list.List, 0),
+		rpcs:         make(map[list.BlacklistedEntryType][]rpc.RPC),
 		errorHandler: errorHandler,
 	}
 	err := b.DB.Init(connectionString)
@@ -32,6 +36,18 @@ func NewBlacklist(connectionString string, errorHandler func(error)) *Blacklist 
 	return b
 }
 
+//SetLists loads a set of blacklist sources into the blacklist controller
+func (b *Blacklist) SetLists(l ...list.List) {
+	b.lists = l
+}
+
+//SetRPCs takes in a remote procedure calls for checking the index of the
+//given entryType. This is meant for querying web services and outside programs.
+//These functions will be ran when CheckEntries is called.
+func (b *Blacklist) SetRPCs(entryType list.BlacklistedEntryType, checkFuncs ...rpc.RPC) {
+	b.rpcs[entryType] = checkFuncs
+}
+
 //Update updates the blacklist database with the latest information pulled
 //from the registered sources
 func (b *Blacklist) Update() {
@@ -40,27 +56,27 @@ func (b *Blacklist) Update() {
 	defer close(errorChannel)
 
 	//get the existing lists from the db
-	registeredMetas, err := b.DB.GetRegisteredLists()
+	remoteMetas, err := b.DB.GetRegisteredLists()
 	if err != nil {
 		errorChannel <- err
 		return
 	}
 
-	//obtain functional list objects
-	registeredLists := getListsFromMetas(registeredMetas, errorChannel)
+	//get the lists to remove from the db
+	metasToRemove := getListsToRemove(b.lists, remoteMetas)
+	for _, metaToRemove := range metasToRemove {
+		b.DB.RemoveList(metaToRemove)
+	}
 
-	//find lists to add to the database
-	listsToAdd := getListsToAdd(registeredLists)
+	existingLists, listsToAdd := findExistingLists(b.lists, remoteMetas)
 
-	//update existing blacklists
-	updateRegisteredLists(registeredLists, b.DB, errorChannel)
+	updateExistingLists(existingLists, b.DB, errorChannel)
 
-	//insert new blacklists
 	createNewLists(listsToAdd, b.DB, errorChannel)
 }
 
 //CheckEntries checks entries of different types against the blacklist database
-func (b *Blacklist) CheckEntries(entryType list.BlacklistedType, indexes ...string) map[string][]database.DBEntry {
+func (b *Blacklist) CheckEntries(entryType list.BlacklistedEntryType, indexes ...string) map[string][]database.DBEntry {
 	results := make(map[string][]database.DBEntry)
 	for _, index := range indexes {
 		//check against cached blacklists
@@ -72,8 +88,7 @@ func (b *Blacklist) CheckEntries(entryType list.BlacklistedType, indexes ...stri
 		results[index] = entries
 
 		//run remote procedure calls
-		rpcs := sources.GetRPCs(entryType)
-		for _, rpc := range rpcs {
+		for _, rpc := range b.rpcs[entryType] {
 			results[index] = append(results[index], rpc(index))
 		}
 	}
@@ -90,58 +105,71 @@ func createErrorChannel(errHandler func(error)) chan<- error {
 	return errorChannel
 }
 
-func getListsFromMetas(metas []list.Metadata, errorsOut chan<- error) []list.List {
-	lists := make([]list.List, len(metas))
-	for _, meta := range metas {
-		l := sources.CreateList(meta.Name)
-		if l != nil {
-			lists = append(lists, l)
-		} else {
-			errorsOut <- fmt.Errorf("Could not find a List named %s", meta.Name)
-		}
-	}
-	return lists
-}
-
-func getListsToAdd(registeredLists []list.List) []list.List {
-	var listsToAdd []list.List
-	//check for new list sources
-	for _, availableList := range sources.GetAvailableLists() {
+//getListsToRemove finds lists that are in remoteMetas that aren't in loadedLists
+func getListsToRemove(loadedLists []list.List, remoteMetas []list.Metadata) []list.Metadata {
+	var metasToRemove []list.Metadata
+	for _, remoteMeta := range remoteMetas {
 		found := false
-		for _, registeredList := range registeredLists {
-			if availableList == registeredList.GetMetadata().Name {
+		for _, loadedList := range loadedLists {
+			if remoteMeta.Name == loadedList.GetMetadata().Name {
 				found = true
 				break
 			}
 		}
 		if !found {
-			listsToAdd = append(listsToAdd, sources.CreateList(availableList))
+			metasToRemove = append(metasToRemove, remoteMeta)
 		}
 	}
-	return listsToAdd
+	return metasToRemove
 }
 
-func updateRegisteredLists(registeredLists []list.List,
-	dbHandle database.Handle, errorsOut chan<- error) {
-	for _, registeredList := range registeredLists {
-		if list.ShouldFetch(registeredList.GetMetadata()) {
-			//kick off fetching in a new thread
-			entriesChannel := list.FetchAndValidateEntries(registeredList, errorsOut)
-			//delete all existing entries and re-add the list
-			err := dbHandle.RemoveList(registeredList)
-			if err != nil {
-				errorsOut <- err
-				continue
+//findExistingLists returns the lists which are in remoteMetas and the lists
+//that are not, in that order
+func findExistingLists(loadedLists []list.List, remoteMetas []list.Metadata) ([]list.List, []list.List) {
+	var existingLists []list.List
+	var listsToAdd []list.List
+	for _, loadedList := range loadedLists {
+		found := false
+		for _, remoteMeta := range remoteMetas {
+			if loadedList.GetMetadata().Name == remoteMeta.Name {
+				found = true
+				break
 			}
-			registeredList.GetMetadata().LastUpdate = time.Now().Unix()
-			err = dbHandle.RegisterList(registeredList)
-			if err != nil {
-				errorsOut <- err
-				continue
-			}
+		}
+		if found {
+			existingLists = append(existingLists, loadedList)
+		} else {
+			listsToAdd = append(listsToAdd, loadedList)
+		}
+	}
+	return existingLists, loadedLists
+}
 
+func updateExistingLists(existingLists []list.List,
+	dbHandle database.Handle, errorsOut chan<- error) {
+	for _, existingList := range existingLists {
+		if list.ShouldFetch(existingList.GetMetadata()) {
+			//kick off fetching in a new thread
+			entryMap := list.FetchAndValidateEntries(existingList, errorsOut)
+			//delete all existing entries and re-add the list
+			err := dbHandle.RemoveList(*existingList.GetMetadata())
+			if err != nil {
+				errorsOut <- err
+				continue
+			}
+			existingList.GetMetadata().LastUpdate = time.Now().Unix()
+			err = dbHandle.RegisterList(*existingList.GetMetadata())
+			if err != nil {
+				errorsOut <- err
+				continue
+			}
 			//in the current thread do the inserts
-			dbHandle.InsertEntries(entriesChannel, errorsOut)
+			wg := new(sync.WaitGroup)
+			for entryType, entryChannel := range entryMap {
+				wg.Add(1)
+				go dbHandle.InsertEntries(entryType, entryChannel, wg, errorsOut)
+			}
+			wg.Wait()
 		}
 	}
 }
@@ -151,16 +179,20 @@ func createNewLists(listsToAdd []list.List,
 	for _, listToAdd := range listsToAdd {
 		if list.ShouldFetch(listToAdd.GetMetadata()) {
 			//kick off fetching in a new thread
-			entriesChannel := list.FetchAndValidateEntries(listToAdd, errorsOut)
+			entryMap := list.FetchAndValidateEntries(listToAdd, errorsOut)
 			listToAdd.GetMetadata().LastUpdate = time.Now().Unix()
-			err := dbHandle.RegisterList(listToAdd)
+			err := dbHandle.RegisterList(*listToAdd.GetMetadata())
 			if err != nil {
 				errorsOut <- err
 				continue
 			}
-
+			wg := new(sync.WaitGroup)
 			//in the current thread do the inserts
-			dbHandle.InsertEntries(entriesChannel, errorsOut)
+			for entryType, entryChannel := range entryMap {
+				wg.Add(1)
+				go dbHandle.InsertEntries(entryType, entryChannel, wg, errorsOut)
+			}
+			wg.Wait()
 		}
 	}
 }

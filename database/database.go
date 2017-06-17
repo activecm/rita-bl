@@ -1,6 +1,10 @@
 package database
 
-import "github.com/ocmdev/rita-blacklist2/list"
+import (
+	"sync"
+
+	"github.com/ocmdev/rita-blacklist2/list"
+)
 
 type (
 	//Handle provides an interface for using a databae to hold
@@ -13,16 +17,20 @@ type (
 		GetRegisteredLists() ([]list.Metadata, error)
 
 		//RegisterList registers a new blacklist source with the database
-		RegisterList(list.List) error
+		RegisterList(list.Metadata) error
 
 		//RemoveList removes an existing blaclist source from the database
-		RemoveList(list.List) error
+		RemoveList(list.Metadata) error
 
 		//InsertEntries inserts entries from a list into the database
-		InsertEntries(entries <-chan list.BlacklistedEntry, errorsOut chan<- error)
+		InsertEntries(
+			entryType list.BlacklistedEntryType,
+			entries <-chan list.BlacklistedEntry,
+			wg *sync.WaitGroup, errorsOut chan<- error,
+		)
 
 		//FindEntries finds entries of a given type and index
-		FindEntries(dataType list.BlacklistedType, index string) ([]DBEntry, error)
+		FindEntries(dataType list.BlacklistedEntryType, index string) ([]DBEntry, error)
 	}
 
 	//DBEntry is the database safe version of BlacklistedEntry
