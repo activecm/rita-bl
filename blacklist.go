@@ -152,13 +152,7 @@ func updateExistingLists(existingLists []list.List,
 			//kick off fetching in a new thread
 			entryMap := list.FetchAndValidateEntries(existingList, errorsOut)
 			//delete all existing entries and re-add the list
-			err := dbHandle.RemoveList(*existingList.GetMetadata())
-			if err != nil {
-				errorsOut <- err
-				continue
-			}
-			existingList.GetMetadata().LastUpdate = time.Now().Unix()
-			err = dbHandle.RegisterList(*existingList.GetMetadata())
+			err := dbHandle.ClearCache(*existingList.GetMetadata())
 			if err != nil {
 				errorsOut <- err
 				continue
@@ -170,6 +164,12 @@ func updateExistingLists(existingLists []list.List,
 				go dbHandle.InsertEntries(entryType, entryChannel, wg, errorsOut)
 			}
 			wg.Wait()
+			existingList.GetMetadata().LastUpdate = time.Now().Unix()
+			err = dbHandle.UpdateListMetadata(*existingList.GetMetadata())
+			if err != nil {
+				errorsOut <- err
+				continue
+			}
 		}
 	}
 }

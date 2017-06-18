@@ -19,8 +19,14 @@ type (
 		//RegisterList registers a new blacklist source with the database
 		RegisterList(list.Metadata) error
 
-		//RemoveList removes an existing blaclist source from the database
+		//RemoveList removes an existing blacklist source from the database
 		RemoveList(list.Metadata) error
+
+		//UpdateListMetadata updates the metadata of an existing blacklist
+		UpdateListMetadata(list.Metadata) error
+
+		//ClearCache clears old entries for a given list
+		ClearCache(list.Metadata) error
 
 		//InsertEntries inserts entries from a list into the database
 		InsertEntries(

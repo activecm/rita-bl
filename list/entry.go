@@ -1,5 +1,13 @@
 package list
 
+import (
+	"errors"
+	"net"
+	"net/url"
+	"strconv"
+	"strings"
+)
+
 type (
 	//BlacklistedEntry is an entry of a List with a given BlacklistedType
 	BlacklistedEntry struct {
@@ -33,6 +41,32 @@ var entryTypeValidators map[BlacklistedEntryType]func(string) error
 const BlacklistedHostnameType BlacklistedEntryType = "hostname"
 
 func validateHostname(hostname string) error {
+	if len(hostname) > 253 || len(hostname) < 1 {
+		return errors.New("hostnames must be less than 254 characters long")
+	}
+	specialCharIdx := strings.IndexFunc(hostname, func(r rune) bool {
+		return !((r >= 'A' && r <= 'Z') ||
+			(r >= 'a' && r <= 'z') ||
+			(r >= '0' && r <= '9') ||
+			r == '-' || r == '.')
+	})
+	if specialCharIdx != -1 {
+		return errors.New("hostnames must contain only 'a'-'z', 'A'-'Z', '0'-'9', the minus sign, and the dot")
+	}
+
+	labels := strings.Split(hostname, ".")
+	for _, l := range labels {
+		if len(l) > 63 || len(l) < 1 {
+			return errors.New("hostname labels must be between 1 and 63 characters long")
+		}
+		if l[0] == '-' {
+			return errors.New("hostnames labels must not start with a minus sign")
+		}
+		if l[len(l)-1] == '-' {
+			return errors.New("hostname labels must not end with a minus sign")
+		}
+	}
+
 	return nil
 }
 
@@ -41,6 +75,10 @@ func validateHostname(hostname string) error {
 const BlacklistedIPType BlacklistedEntryType = "ip"
 
 func validateIP(ip string) error {
+	parsed := net.ParseIP(ip)
+	if parsed == nil {
+		return errors.New("failed to parse ip address")
+	}
 	return nil
 }
 
@@ -48,7 +86,26 @@ func validateIP(ip string) error {
 //in order to return hostnames from a list
 const BlacklistedURLType BlacklistedEntryType = "url"
 
-func validateURL(url string) error {
+func validateURL(str string) error {
+	u, err := url.ParseRequestURI(str)
+	if err != nil {
+		return err
+	}
+	portSplit := strings.Split(u.Host, ":")
+	if len(portSplit) > 1 {
+		portNumber, err := strconv.ParseInt(portSplit[1], 10, 64)
+		if err != nil {
+			return errors.New("port specifier found but unable to parse port in url")
+		}
+		if portNumber < 0 || portNumber > 65536 {
+			return errors.New("invalid port number specified in url")
+		}
+		u.Host = portSplit[0]
+	}
+	isValidHost := validateHostname(u.Host) == nil || validateIP(u.Host) == nil
+	if !isValidHost {
+		return errors.New("invalid host for url")
+	}
 	return nil
 }
 

@@ -79,6 +79,28 @@ func (m *MongoDB) RegisterList(l list.Metadata) error {
 
 //RemoveList removes an existing blaclist source from the database
 func (m *MongoDB) RemoveList(l list.Metadata) error {
+	err := m.ClearCache(l)
+	if err != nil {
+		return err
+	}
+	ssn := m.session.Copy()
+	defer ssn.Close()
+	err = ssn.DB(database).C(listsCollection).Remove(bson.M{"name": l.Name})
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+//UpdateListMetadata updates the metadata of an existing blacklist
+func (m *MongoDB) UpdateListMetadata(l list.Metadata) error {
+	ssn := m.session.Copy()
+	defer ssn.Close()
+	return ssn.DB(database).C(listsCollection).Update(bson.M{"name": l.Name}, l)
+}
+
+//ClearCache clears old entries for a given list
+func (m *MongoDB) ClearCache(l list.Metadata) error {
 	ssn := m.session.Copy()
 	defer ssn.Close()
 	for _, entryType := range l.Types {
@@ -86,10 +108,6 @@ func (m *MongoDB) RemoveList(l list.Metadata) error {
 		if err != nil {
 			return err
 		}
-	}
-	err := ssn.DB(database).C(listsCollection).Remove(bson.M{"name": l.Name})
-	if err != nil {
-		return err
 	}
 	return nil
 }
