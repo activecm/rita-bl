@@ -23,10 +23,12 @@ func TestCustomBL(t *testing.T) {
 	b.Update()
 	getData := func() io.ReadCloser {
 		buf := new(bytes.Buffer)
-		buf.WriteString(`192.168.0.1
+		buf.WriteString(`
+192.168.0.1
 192.168.0.2
 192.168.0.3
-10.10.10.10`)
+10.10.10.10
+`)
 		return nopCloser{buf}
 	}
 
