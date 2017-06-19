@@ -4,6 +4,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/ocmdev/rita-blacklist2/database"
 	"github.com/ocmdev/rita-blacklist2/list"
 	"github.com/ocmdev/rita-blacklist2/sources/mock"
 )
@@ -12,7 +13,9 @@ import (
 var __blacklistTestHandle *Blacklist
 
 func TestMain(m *testing.M) {
-	__blacklistTestHandle = NewBlacklist("localhost:27017", func(err error) { panic(err) })
+	__blacklistTestHandle = NewBlacklist(database.NewMongoDB,
+		"localhost:27017", "rita-blacklist-TEST",
+		func(err error) { panic(err) })
 	os.Exit(m.Run())
 }
 

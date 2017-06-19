@@ -12,7 +12,7 @@ import (
 type (
 	//Blacklist is the main controller for rita-blacklist
 	Blacklist struct {
-		DB           database.Handle
+		db           database.Handle
 		lists        []list.List
 		rpcs         map[list.BlacklistedEntryType][]rpc.RPC
 		errorHandler func(error)
@@ -21,14 +21,14 @@ type (
 
 //NewBlacklist creates a new blacklist controller and connects to the
 //backing database
-func NewBlacklist(connectionString string, errorHandler func(error)) *Blacklist {
+func NewBlacklist(dbFactory database.Provider, connectionString string, dataset string, errorHandler func(error)) *Blacklist {
 	b := &Blacklist{
-		DB:           &database.MongoDB{},
+		db:           dbFactory(),
 		lists:        make([]list.List, 0),
 		rpcs:         make(map[list.BlacklistedEntryType][]rpc.RPC),
 		errorHandler: errorHandler,
 	}
-	err := b.DB.Init(connectionString)
+	err := b.db.Init(connectionString, dataset)
 	if err != nil {
 		errorHandler(err)
 		return nil
@@ -60,7 +60,7 @@ func (b *Blacklist) Update() {
 	defer close(errorChannel)
 
 	//get the existing lists from the db
-	remoteMetas, err := b.DB.GetRegisteredLists()
+	remoteMetas, err := b.db.GetRegisteredLists()
 	if err != nil {
 		errorChannel <- err
 		return
@@ -69,14 +69,14 @@ func (b *Blacklist) Update() {
 	//get the lists to remove from the db
 	metasToRemove := getListsToRemove(b.lists, remoteMetas)
 	for _, metaToRemove := range metasToRemove {
-		b.DB.RemoveList(metaToRemove)
+		b.db.RemoveList(metaToRemove)
 	}
 
 	existingLists, listsToAdd := findExistingLists(b.lists, remoteMetas)
 
-	updateExistingLists(existingLists, b.DB, errorChannel)
+	updateExistingLists(existingLists, b.db, errorChannel)
 
-	createNewLists(listsToAdd, b.DB, errorChannel)
+	createNewLists(listsToAdd, b.db, errorChannel)
 }
 
 //CheckEntries checks entries of different types against the blacklist database
@@ -84,7 +84,7 @@ func (b *Blacklist) CheckEntries(entryType list.BlacklistedEntryType, indexes ..
 	results := make(map[string][]database.DBEntry)
 	for _, index := range indexes {
 		//check against cached blacklists
-		entries, err := b.DB.FindEntries(entryType, index)
+		entries, err := b.db.FindEntries(entryType, index)
 		if err != nil {
 			b.errorHandler(err)
 			continue

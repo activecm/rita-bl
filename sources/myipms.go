@@ -14,14 +14,14 @@ import (
 	"github.com/ocmdev/rita-blacklist2/list"
 )
 
-//MyIPmsList gathers blacklisted ip addresses from myip.ms
-type MyIPmsList struct {
+//myIPmsList gathers blacklisted ip addresses from myip.ms
+type myIPmsList struct {
 	meta list.Metadata
 }
 
 //NewMyIPmsList returns a new MyIPmsList object
-func NewMyIPmsList() *MyIPmsList {
-	return &MyIPmsList{
+func NewMyIPmsList() list.List {
+	return &myIPmsList{
 		meta: list.Metadata{
 			Types:     []list.BlacklistedEntryType{list.BlacklistedIPType},
 			Name:      "myip.ms",
@@ -31,19 +31,19 @@ func NewMyIPmsList() *MyIPmsList {
 }
 
 //GetMetadata returns the Metadata associated with this blacklist
-func (m *MyIPmsList) GetMetadata() list.Metadata {
+func (m *myIPmsList) GetMetadata() list.Metadata {
 	return m.meta
 }
 
 //SetMetadata sets the Metadata associated with this blacklist
-func (m *MyIPmsList) SetMetadata(meta list.Metadata) {
+func (m *myIPmsList) SetMetadata(meta list.Metadata) {
 	m.meta = meta
 }
 
 //FetchData fetches the BlacklistedEntries associated with this list.
 //This function must run the fetch in the background and immediately
 //return a map of channels to read from.
-func (m *MyIPmsList) FetchData(entryMap list.BlacklistedEntryMap, errorsOut chan<- error) {
+func (m *myIPmsList) FetchData(entryMap list.BlacklistedEntryMap, errorsOut chan<- error) {
 	defer close(entryMap[list.BlacklistedIPType])
 
 	resp, err := http.Get("https://myip.ms/files/blacklist/general/full_blacklist_database.zip")

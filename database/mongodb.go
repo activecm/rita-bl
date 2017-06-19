@@ -8,16 +8,23 @@ import (
 	"gopkg.in/mgo.v2/bson"
 )
 
-//MongoDB provides a MongoDB backend for rita-blacklist
-type MongoDB struct {
-	session *mgo.Session
+//mongoDB provides a MongoDB backend for rita-blacklist
+type mongoDB struct {
+	session  *mgo.Session
+	database string
 }
 
-const database string = "rita-blacklist2"
 const listsCollection string = "lists"
 
+//NewMongoDB returns a new mongoDB Handle
+func NewMongoDB() Handle {
+	return new(mongoDB)
+}
+
 //Init opens the connection to the backing database
-func (m *MongoDB) Init(connectionString string) error {
+func (m *mongoDB) Init(connectionString string, database string) error {
+	m.database = database
+
 	ssn, err := mgo.Dial(connectionString)
 	if err != nil {
 		return err
@@ -27,22 +34,22 @@ func (m *MongoDB) Init(connectionString string) error {
 }
 
 //GetRegisteredLists retrieves all of the lists registered with the database
-func (m *MongoDB) GetRegisteredLists() ([]list.Metadata, error) {
+func (m *mongoDB) GetRegisteredLists() ([]list.Metadata, error) {
 	var lists []list.Metadata
 	ssn := m.session.Copy()
 	defer ssn.Close()
 
-	err := ssn.DB(database).C(listsCollection).Find(nil).All(&lists)
+	err := ssn.DB(m.database).C(listsCollection).Find(nil).All(&lists)
 	return lists, err
 }
 
 //RegisterList registers a new blacklist source with the database
-func (m *MongoDB) RegisterList(l list.Metadata) error {
+func (m *mongoDB) RegisterList(l list.Metadata) error {
 	ssn := m.session.Copy()
 	defer ssn.Close()
 
 	//get the existing collections
-	collectionNames, err := ssn.DB(database).CollectionNames()
+	collectionNames, err := ssn.DB(m.database).CollectionNames()
 	if err != nil {
 		return err
 	}
@@ -58,14 +65,14 @@ func (m *MongoDB) RegisterList(l list.Metadata) error {
 
 	//create listsCollection if it doesn't exist
 	if !found {
-		err = ssn.DB(database).C(listsCollection).Create(&mgo.CollectionInfo{
+		err = ssn.DB(m.database).C(listsCollection).Create(&mgo.CollectionInfo{
 			DisableIdIndex: true,
 		})
 		if err != nil {
 			return err
 		}
 
-		err = ssn.DB(database).C(listsCollection).EnsureIndex(mgo.Index{
+		err = ssn.DB(m.database).C(listsCollection).EnsureIndex(mgo.Index{
 			Key:    []string{"name"},
 			Unique: true,
 		})
@@ -74,7 +81,7 @@ func (m *MongoDB) RegisterList(l list.Metadata) error {
 		}
 	}
 	//insert the new list
-	err = ssn.DB(database).C(listsCollection).Insert(l)
+	err = ssn.DB(m.database).C(listsCollection).Insert(l)
 	if err != nil {
 		return err
 	}
@@ -92,14 +99,14 @@ func (m *MongoDB) RegisterList(l list.Metadata) error {
 
 		//create the collection if it doesn't exist
 		if !found {
-			ssn.DB(database).C(string(entryType)).Create(&mgo.CollectionInfo{
+			ssn.DB(m.database).C(string(entryType)).Create(&mgo.CollectionInfo{
 				DisableIdIndex: true,
 			})
-			ssn.DB(database).C(string(entryType)).EnsureIndex(mgo.Index{
+			ssn.DB(m.database).C(string(entryType)).EnsureIndex(mgo.Index{
 				Key:    []string{"$hashed:index"},
 				Unique: false,
 			})
-			ssn.DB(database).C(string(entryType)).EnsureIndex(mgo.Index{
+			ssn.DB(m.database).C(string(entryType)).EnsureIndex(mgo.Index{
 				Key:    []string{"index", "list"},
 				Unique: true,
 			})
@@ -109,14 +116,14 @@ func (m *MongoDB) RegisterList(l list.Metadata) error {
 }
 
 //RemoveList removes an existing blaclist source from the database
-func (m *MongoDB) RemoveList(l list.Metadata) error {
+func (m *mongoDB) RemoveList(l list.Metadata) error {
 	err := m.ClearCache(l)
 	if err != nil {
 		return err
 	}
 	ssn := m.session.Copy()
 	defer ssn.Close()
-	err = ssn.DB(database).C(listsCollection).Remove(bson.M{"name": l.Name})
+	err = ssn.DB(m.database).C(listsCollection).Remove(bson.M{"name": l.Name})
 	if err != nil {
 		return err
 	}
@@ -124,18 +131,18 @@ func (m *MongoDB) RemoveList(l list.Metadata) error {
 }
 
 //UpdateListMetadata updates the metadata of an existing blacklist
-func (m *MongoDB) UpdateListMetadata(l list.Metadata) error {
+func (m *mongoDB) UpdateListMetadata(l list.Metadata) error {
 	ssn := m.session.Copy()
 	defer ssn.Close()
-	return ssn.DB(database).C(listsCollection).Update(bson.M{"name": l.Name}, l)
+	return ssn.DB(m.database).C(listsCollection).Update(bson.M{"name": l.Name}, l)
 }
 
 //ClearCache clears old entries for a given list
-func (m *MongoDB) ClearCache(l list.Metadata) error {
+func (m *mongoDB) ClearCache(l list.Metadata) error {
 	ssn := m.session.Copy()
 	defer ssn.Close()
 	for _, entryType := range l.Types {
-		_, err := ssn.DB(database).C(string(entryType)).RemoveAll(bson.M{"list": l.Name})
+		_, err := ssn.DB(m.database).C(string(entryType)).RemoveAll(bson.M{"list": l.Name})
 		if err != nil {
 			return err
 		}
@@ -144,13 +151,13 @@ func (m *MongoDB) ClearCache(l list.Metadata) error {
 }
 
 //InsertEntries inserts entries from a list into the database
-func (m *MongoDB) InsertEntries(entryType list.BlacklistedEntryType,
+func (m *mongoDB) InsertEntries(entryType list.BlacklistedEntryType,
 	entries <-chan list.BlacklistedEntry, wg *sync.WaitGroup, errorsOut chan<- error) {
 	ssn := m.session.Copy()
 	defer ssn.Close()
 
 	i := 0
-	bulk := ssn.DB(database).C(string(entryType)).Bulk()
+	bulk := ssn.DB(m.database).C(string(entryType)).Bulk()
 	buffSize := 100000
 	for entry := range entries {
 		bulk.Insert(DBEntry{
@@ -165,7 +172,7 @@ func (m *MongoDB) InsertEntries(entryType list.BlacklistedEntryType,
 				errorsOut <- err
 			}
 			i = 0
-			bulk = ssn.DB(database).C(string(entryType)).Bulk()
+			bulk = ssn.DB(m.database).C(string(entryType)).Bulk()
 		}
 	}
 	if i != 0 {
@@ -178,10 +185,10 @@ func (m *MongoDB) InsertEntries(entryType list.BlacklistedEntryType,
 }
 
 //FindEntries finds entries of a given type and index
-func (m *MongoDB) FindEntries(dataType list.BlacklistedEntryType, index string) ([]DBEntry, error) {
+func (m *mongoDB) FindEntries(dataType list.BlacklistedEntryType, index string) ([]DBEntry, error) {
 	ssn := m.session.Copy()
 	defer ssn.Close()
 	var entries []DBEntry
-	err := ssn.DB(database).C(string(dataType)).Find(bson.M{"index": index}).All(&entries)
+	err := ssn.DB(m.database).C(string(dataType)).Find(bson.M{"index": index}).All(&entries)
 	return entries, err
 }

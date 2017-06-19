@@ -9,13 +9,13 @@ import (
 )
 
 //DummyList provides mock data for rita-blacklist
-type DummyList struct {
+type dummyList struct {
 	meta list.Metadata
 }
 
 //NewDummyList returns a new DummyList object
-func NewDummyList() *DummyList {
-	return &DummyList{
+func NewDummyList() list.List {
+	return &dummyList{
 		meta: list.Metadata{
 			Types: []list.BlacklistedEntryType{
 				list.BlacklistedIPType, list.BlacklistedHostnameType,
@@ -27,19 +27,19 @@ func NewDummyList() *DummyList {
 }
 
 //GetMetadata returns the Metadata associated with this blacklist
-func (d *DummyList) GetMetadata() list.Metadata {
+func (d *dummyList) GetMetadata() list.Metadata {
 	return d.meta
 }
 
 //SetMetadata sets the Metadata associated with this blacklist
-func (d *DummyList) SetMetadata(m list.Metadata) {
+func (d *dummyList) SetMetadata(m list.Metadata) {
 	d.meta = m
 }
 
 //FetchData fetches the BlacklistedEntries associated with this list.
 //This function must run the fetch in the background and immediately
 //return a map of channels to read from.
-func (d *DummyList) FetchData(entryMap list.BlacklistedEntryMap, errorsOut chan<- error) {
+func (d *dummyList) FetchData(entryMap list.BlacklistedEntryMap, errorsOut chan<- error) {
 	var i uint32
 	for i = 0; i < 100; i++ {
 		bs := make([]byte, 4)
