@@ -44,8 +44,10 @@ func (b *Blacklist) SetLists(l ...list.List) {
 //SetRPCs takes in a remote procedure calls for checking the index of the
 //given entryType. This is meant for querying web services and outside programs.
 //These functions will be ran when CheckEntries is called.
-func (b *Blacklist) SetRPCs(entryType list.BlacklistedEntryType, checkFuncs ...rpc.RPC) {
-	b.rpcs[entryType] = checkFuncs
+func (b *Blacklist) SetRPCs(rpcs ...rpc.RPC) {
+	for _, call := range rpcs {
+		b.rpcs[call.GetType()] = append(b.rpcs[call.GetType()], call)
+	}
 }
 
 //Update updates the blacklist database with the latest information pulled
@@ -88,10 +90,18 @@ func (b *Blacklist) CheckEntries(entryType list.BlacklistedEntryType, indexes ..
 			continue
 		}
 		results[index] = entries
-
-		//run remote procedure calls
-		for _, rpc := range b.rpcs[entryType] {
-			results[index] = append(results[index], rpc(index))
+	}
+	//run remote procedure calls
+	for _, rpc := range b.rpcs[entryType] {
+		//get the results from this check on all of the indexes
+		rpcResults, err := rpc.Check(indexes...)
+		if err != nil {
+			b.errorHandler(err)
+			continue
+		}
+		//add the results to the overall results
+		for index, entries := range rpcResults {
+			results[index] = append(results[index], entries)
 		}
 	}
 	return results
