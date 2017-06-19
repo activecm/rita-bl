@@ -52,7 +52,9 @@ func (b *Blacklist) SetRPCs(entryType list.BlacklistedEntryType, checkFuncs ...r
 //from the registered sources
 func (b *Blacklist) Update() {
 	//handle errors
-	errorChannel := createErrorChannel(b.errorHandler)
+	finishedProcessingErrors := make(chan struct{})
+	errorChannel := createErrorChannel(b.errorHandler, finishedProcessingErrors)
+	defer func() { <-finishedProcessingErrors }()
 	defer close(errorChannel)
 
 	//get the existing lists from the db
@@ -69,6 +71,7 @@ func (b *Blacklist) Update() {
 	}
 
 	existingLists, listsToAdd := findExistingLists(b.lists, remoteMetas)
+
 	updateExistingLists(existingLists, b.DB, errorChannel)
 
 	createNewLists(listsToAdd, b.DB, errorChannel)
@@ -94,13 +97,15 @@ func (b *Blacklist) CheckEntries(entryType list.BlacklistedEntryType, indexes ..
 	return results
 }
 
-func createErrorChannel(errHandler func(error)) chan<- error {
+func createErrorChannel(errHandler func(error), finished chan<- struct{}) chan<- error {
 	errorChannel := make(chan error)
-	go func(errHandler func(error), errors <-chan error) {
+	go func(errHandler func(error), errors <-chan error, finished chan<- struct{}) {
 		for err := range errorChannel {
 			errHandler(err)
 		}
-	}(errHandler, errorChannel)
+		var fin struct{}
+		finished <- fin
+	}(errHandler, errorChannel, finished)
 	return errorChannel
 }
 
@@ -194,6 +199,7 @@ func createNewLists(listsToAdd []list.List,
 			preWriteMetaCopy.LastUpdate = 0
 			preWriteMetaCopy.CacheTime = 0
 			err := dbHandle.RegisterList(preWriteMetaCopy)
+
 			if err != nil {
 				errorsOut <- err
 				continue

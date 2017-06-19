@@ -40,19 +40,49 @@ func (m *MongoDB) GetRegisteredLists() ([]list.Metadata, error) {
 func (m *MongoDB) RegisterList(l list.Metadata) error {
 	ssn := m.session.Copy()
 	defer ssn.Close()
-	err := ssn.DB(database).C(listsCollection).Insert(l)
-	if err != nil {
-		return err
-	}
 
+	//get the existing collections
 	collectionNames, err := ssn.DB(database).CollectionNames()
 	if err != nil {
 		return err
 	}
 
-	for _, entryType := range l.Types {
+	//check if lists collection is in collection names
+	found := false
+	for _, existingColl := range collectionNames {
+		if existingColl == listsCollection {
+			found = true
+			break
+		}
+	}
 
-		found := false
+	//create listsCollection if it doesn't exist
+	if !found {
+		err = ssn.DB(database).C(listsCollection).Create(&mgo.CollectionInfo{
+			DisableIdIndex: true,
+		})
+		if err != nil {
+			return err
+		}
+
+		err = ssn.DB(database).C(listsCollection).EnsureIndex(mgo.Index{
+			Key:    []string{"name"},
+			Unique: true,
+		})
+		if err != nil {
+			return err
+		}
+	}
+	//insert the new list
+	err = ssn.DB(database).C(listsCollection).Insert(l)
+	if err != nil {
+		return err
+	}
+
+	//create the collections for the types of entries this list produces
+	for _, entryType := range l.Types {
+		//see if the collection exists
+		found = false
 		for _, existingColl := range collectionNames {
 			if existingColl == string(entryType) {
 				found = true
@@ -60,6 +90,7 @@ func (m *MongoDB) RegisterList(l list.Metadata) error {
 			}
 		}
 
+		//create the collection if it doesn't exist
 		if !found {
 			ssn.DB(database).C(string(entryType)).Create(&mgo.CollectionInfo{
 				DisableIdIndex: true,
