@@ -160,7 +160,7 @@ func (m *mongoDB) InsertEntries(entryType list.BlacklistedEntryType,
 	bulk := ssn.DB(m.database).C(string(entryType)).Bulk()
 	buffSize := 100000
 	for entry := range entries {
-		bulk.Insert(DBEntry{
+		bulk.Insert(BlacklistResult{
 			Index:     entry.Index,
 			List:      entry.List.GetMetadata().Name,
 			ExtraData: entry.ExtraData,
@@ -185,10 +185,10 @@ func (m *mongoDB) InsertEntries(entryType list.BlacklistedEntryType,
 }
 
 //FindEntries finds entries of a given type and index
-func (m *mongoDB) FindEntries(dataType list.BlacklistedEntryType, index string) ([]DBEntry, error) {
+func (m *mongoDB) FindEntries(dataType list.BlacklistedEntryType, index string) ([]BlacklistResult, error) {
 	ssn := m.session.Copy()
 	defer ssn.Close()
-	var entries []DBEntry
+	var entries []BlacklistResult
 	err := ssn.DB(m.database).C(string(dataType)).Find(bson.M{"index": index}).All(&entries)
 	return entries, err
 }

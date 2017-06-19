@@ -19,7 +19,7 @@ func (s safeBrowsingURLsRPC) GetType() list.BlacklistedEntryType {
 
 //Check checks a set of indexes against the rpc and returns a map
 //of the indexes to their results
-func (s safeBrowsingURLsRPC) Check(urls ...string) (map[string]database.DBEntry, error) {
+func (s safeBrowsingURLsRPC) Check(urls ...string) (map[string]database.BlacklistResult, error) {
 	//threats is a 2d array indexed by the index of the urls and then by the
 	//individual results for the url
 	threats, err := s.safebrowser.LookupURLs(urls)
@@ -27,12 +27,12 @@ func (s safeBrowsingURLsRPC) Check(urls ...string) (map[string]database.DBEntry,
 		return nil, err
 	}
 
-	entries := make(map[string]database.DBEntry)
+	entries := make(map[string]database.BlacklistResult)
 	for urlIndex, urlLookup := range threats {
 		//if there were hits for this url
 		if len(urlLookup) > 0 {
 			url := urls[urlIndex]
-			entries[url] = database.DBEntry{
+			entries[url] = database.BlacklistResult{
 				Index:     url,
 				List:      "google-safebrowsing",
 				ExtraData: make(map[string]interface{}),

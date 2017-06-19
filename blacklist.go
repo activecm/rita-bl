@@ -80,8 +80,8 @@ func (b *Blacklist) Update() {
 }
 
 //CheckEntries checks entries of different types against the blacklist database
-func (b *Blacklist) CheckEntries(entryType list.BlacklistedEntryType, indexes ...string) map[string][]database.DBEntry {
-	results := make(map[string][]database.DBEntry)
+func (b *Blacklist) CheckEntries(entryType list.BlacklistedEntryType, indexes ...string) map[string][]database.BlacklistResult {
+	results := make(map[string][]database.BlacklistResult)
 	for _, index := range indexes {
 		//check against cached blacklists
 		entries, err := b.db.FindEntries(entryType, index)

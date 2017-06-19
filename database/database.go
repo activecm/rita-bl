@@ -36,11 +36,13 @@ type (
 		)
 
 		//FindEntries finds entries of a given type and index
-		FindEntries(dataType list.BlacklistedEntryType, index string) ([]DBEntry, error)
+		FindEntries(dataType list.BlacklistedEntryType, index string) ([]BlacklistResult, error)
 	}
 
-	//DBEntry is the database safe version of BlacklistedEntry
-	DBEntry struct {
+	//BlacklistResult is the database safe version of BlacklistedEntry.
+	//A way to think about this is that entries go in the database, and
+	//results come out. This structure is also used to return data from RPC calls.
+	BlacklistResult struct {
 		//Index is the main data held by this entry
 		Index string
 		//List is the source list

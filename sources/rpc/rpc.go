@@ -12,5 +12,5 @@ type RPC interface {
 	GetType() list.BlacklistedEntryType
 	//Check checks a set of indexes against the rpc and returns a map
 	//of the indexes to their results
-	Check(...string) (map[string]database.DBEntry, error)
+	Check(...string) (map[string]database.BlacklistResult, error)
 }
