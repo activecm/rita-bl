@@ -1,4 +1,4 @@
-package sources
+package lists
 
 import (
 	"archive/zip"
@@ -45,8 +45,9 @@ func (m *myIPmsList) SetMetadata(meta list.Metadata) {
 //return a map of channels to read from.
 func (m *myIPmsList) FetchData(entryMap list.BlacklistedEntryMap, errorsOut chan<- error) {
 	defer close(entryMap[list.BlacklistedIPType])
+	myIPmsURL := "https://myip.ms/files/blacklist/general/full_blacklist_database.zip"
 
-	resp, err := http.Get("https://myip.ms/files/blacklist/general/full_blacklist_database.zip")
+	resp, err := http.Get(myIPmsURL)
 	if err != nil {
 		errorsOut <- err
 		return
