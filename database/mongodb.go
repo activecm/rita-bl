@@ -117,13 +117,28 @@ func (m *MongoDB) InsertEntries(entryType list.BlacklistedEntryType,
 	entries <-chan list.BlacklistedEntry, wg *sync.WaitGroup, errorsOut chan<- error) {
 	ssn := m.session.Copy()
 	defer ssn.Close()
+
+	i := 0
+	bulk := ssn.DB(database).C(string(entryType)).Bulk()
+	buffSize := 100000
 	for entry := range entries {
-		dbSafe := DBEntry{
+		bulk.Insert(DBEntry{
 			Index:     entry.Index,
 			List:      entry.List.GetMetadata().Name,
 			ExtraData: entry.ExtraData,
+		})
+		i++
+		if i == buffSize {
+			_, err := bulk.Run()
+			if err != nil {
+				errorsOut <- err
+			}
+			i = 0
+			bulk = ssn.DB(database).C(string(entryType)).Bulk()
 		}
-		err := ssn.DB(database).C(string(entryType)).Insert(dbSafe)
+	}
+	if i != 0 {
+		_, err := bulk.Run()
 		if err != nil {
 			errorsOut <- err
 		}

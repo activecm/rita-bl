@@ -69,7 +69,6 @@ func (b *Blacklist) Update() {
 	}
 
 	existingLists, listsToAdd := findExistingLists(b.lists, remoteMetas)
-
 	updateExistingLists(existingLists, b.DB, errorChannel)
 
 	createNewLists(listsToAdd, b.DB, errorChannel)
@@ -124,48 +123,54 @@ func getListsToRemove(loadedLists []list.List, remoteMetas []list.Metadata) []li
 }
 
 //findExistingLists returns the lists which are in remoteMetas and the lists
-//that are not, in that order
+//that are not, in that order. Note: this function has the side effect of
+//loading in the metadata from the database into the loaded lists
 func findExistingLists(loadedLists []list.List, remoteMetas []list.Metadata) ([]list.List, []list.List) {
 	var existingLists []list.List
 	var listsToAdd []list.List
 	for _, loadedList := range loadedLists {
-		found := false
+		//load in the remote metadata into the loaded list if found
+		var foundMeta *list.Metadata
 		for _, remoteMeta := range remoteMetas {
 			if loadedList.GetMetadata().Name == remoteMeta.Name {
-				found = true
+				foundMeta = &remoteMeta
 				break
 			}
 		}
-		if found {
+		if foundMeta != nil {
+			loadedList.SetMetadata(*foundMeta)
 			existingLists = append(existingLists, loadedList)
 		} else {
 			listsToAdd = append(listsToAdd, loadedList)
 		}
 	}
-	return existingLists, loadedLists
+	return existingLists, listsToAdd
 }
 
 func updateExistingLists(existingLists []list.List,
 	dbHandle database.Handle, errorsOut chan<- error) {
 	for _, existingList := range existingLists {
-		if list.ShouldFetch(existingList.GetMetadata()) {
+		meta := existingList.GetMetadata()
+		if list.ShouldFetch(meta) {
 			//kick off fetching in a new thread
 			entryMap := list.FetchAndValidateEntries(existingList, errorsOut)
 			//delete all existing entries and re-add the list
-			err := dbHandle.ClearCache(*existingList.GetMetadata())
+			err := dbHandle.ClearCache(meta)
+
 			if err != nil {
 				errorsOut <- err
 				continue
 			}
-			//in the current thread do the inserts
+
 			wg := new(sync.WaitGroup)
 			for entryType, entryChannel := range entryMap {
 				wg.Add(1)
 				go dbHandle.InsertEntries(entryType, entryChannel, wg, errorsOut)
 			}
 			wg.Wait()
-			existingList.GetMetadata().LastUpdate = time.Now().Unix()
-			err = dbHandle.UpdateListMetadata(*existingList.GetMetadata())
+
+			meta.LastUpdate = time.Now().Unix()
+			err = dbHandle.UpdateListMetadata(meta)
 			if err != nil {
 				errorsOut <- err
 				continue
@@ -177,22 +182,37 @@ func updateExistingLists(existingLists []list.List,
 func createNewLists(listsToAdd []list.List,
 	dbHandle database.Handle, errorsOut chan<- error) {
 	for _, listToAdd := range listsToAdd {
+		meta := listToAdd.GetMetadata()
 		if list.ShouldFetch(listToAdd.GetMetadata()) {
 			//kick off fetching in a new thread
 			entryMap := list.FetchAndValidateEntries(listToAdd, errorsOut)
-			listToAdd.GetMetadata().LastUpdate = time.Now().Unix()
-			err := dbHandle.RegisterList(*listToAdd.GetMetadata())
+
+			//register the list, create, and index the new collections
+			//set the cache to invalid so if the code errors,
+			//the code will reimport it
+			preWriteMetaCopy := meta
+			preWriteMetaCopy.LastUpdate = 0
+			preWriteMetaCopy.CacheTime = 0
+			err := dbHandle.RegisterList(preWriteMetaCopy)
 			if err != nil {
 				errorsOut <- err
 				continue
 			}
+
 			wg := new(sync.WaitGroup)
-			//in the current thread do the inserts
 			for entryType, entryChannel := range entryMap {
 				wg.Add(1)
 				go dbHandle.InsertEntries(entryType, entryChannel, wg, errorsOut)
 			}
 			wg.Wait()
+
+			//set the cache to valid
+			meta.LastUpdate = time.Now().Unix()
+			err = dbHandle.UpdateListMetadata(meta)
+			if err != nil {
+				errorsOut <- err
+				continue
+			}
 		}
 	}
 }

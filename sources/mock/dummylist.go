@@ -21,14 +21,19 @@ func NewDummyList() *DummyList {
 				list.BlacklistedIPType, list.BlacklistedHostnameType,
 			},
 			Name:      "Dummy",
-			CacheTime: 5000,
+			CacheTime: 0,
 		},
 	}
 }
 
 //GetMetadata returns the Metadata associated with this blacklist
-func (d *DummyList) GetMetadata() *list.Metadata {
-	return &d.meta
+func (d *DummyList) GetMetadata() list.Metadata {
+	return d.meta
+}
+
+//SetMetadata sets the Metadata associated with this blacklist
+func (d *DummyList) SetMetadata(m list.Metadata) {
+	d.meta = m
 }
 
 //FetchData fetches the BlacklistedEntries associated with this list.

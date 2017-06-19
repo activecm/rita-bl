@@ -8,7 +8,9 @@ type (
 	//List provides an interface for fetching a list of blacklisted items
 	List interface {
 		//GetMetadata returns the Metadata associated with this blacklist
-		GetMetadata() *Metadata
+		GetMetadata() Metadata
+		//SetMetadata sets the Metadata associated with this blacklist
+		SetMetadata(Metadata)
 		//FetchData fetches the BlacklistedEntrys associated with this blacklist.
 		//This function must close the channels supplied in the entryMap.
 		//This function should not close errorsOut as it is part of a larger
@@ -46,8 +48,8 @@ func NewBlacklistedEntryMap(types ...BlacklistedEntryType) BlacklistedEntryMap {
 }
 
 //ShouldFetch returns true if the CacheTiem is up on a given list
-func ShouldFetch(m *Metadata) bool {
-	return time.Now().Unix() > m.LastUpdate+m.CacheTime
+func ShouldFetch(m Metadata) bool {
+	return time.Now().Unix() >= m.LastUpdate+m.CacheTime
 }
 
 //FetchAndValidateEntries fetches the entries from a given List,
