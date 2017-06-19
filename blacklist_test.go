@@ -68,3 +68,20 @@ func DummyHostnameSearch(t *testing.T) {
 		t.Fail()
 	}
 }
+
+/* NOTE: This test only runs if you supply it an api key and a db path
+func TestGoogleRPC(t *testing.T) {
+	google, err := rpc.NewGoogleSafeBrowsingURLsRPC("API_KEY", "DB_PATH", os.Stdout)
+	if err != nil {
+		panic(err)
+	}
+	url := "http://testsafebrowsing.appspot.com/apiv4/ANY_PLATFORM/MALWARE/URL/"
+	__blacklistTestHandle.SetRPCs(google)
+	results := __blacklistTestHandle.CheckEntries(list.BlacklistedURLType, url)
+	if len(results) < 1 {
+		t.Fail()
+	}
+	if len(results[url]) < 1 {
+		t.Fail()
+	}
+}*/
