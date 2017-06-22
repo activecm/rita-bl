@@ -22,7 +22,7 @@ func NewMdlList() list.List {
 				list.BlacklistedIPType,
 				list.BlacklistedURLType,
 			},
-			Name:      "myip.ms",
+			Name:      "mdl",
 			CacheTime: 86400,
 		},
 	}
