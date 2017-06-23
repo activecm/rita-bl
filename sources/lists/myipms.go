@@ -1,17 +1,14 @@
 package lists
 
 import (
-	"archive/zip"
 	"bufio"
-	"bytes"
 	"errors"
-	"io"
-	"net/http"
 	"strconv"
 	"strings"
 	"unicode"
 
 	"github.com/ocmdev/rita-blacklist2/list"
+	"github.com/ocmdev/rita-blacklist2/sources/lists/util"
 )
 
 //myIPmsList gathers blacklisted ip addresses from myip.ms
@@ -46,33 +43,11 @@ func (m *myIPmsList) SetMetadata(meta list.Metadata) {
 func (m *myIPmsList) FetchData(entryMap list.BlacklistedEntryMap, errorsOut chan<- error) {
 	defer close(entryMap[list.BlacklistedIPType])
 	myIPmsURL := "https://myip.ms/files/blacklist/general/full_blacklist_database.zip"
-
-	resp, err := http.Get(myIPmsURL)
+	fileHandle, err := util.ReadZippedFileFromWeb(myIPmsURL)
 	if err != nil {
 		errorsOut <- err
 		return
 	}
-	//read the file into ram
-	buff := new(bytes.Buffer)
-	io.Copy(buff, resp.Body)
-	resp.Body.Close()
-
-	//extract the zip archive
-	buffer := buff.Bytes()
-	buffReader := bytes.NewReader(buffer)
-	zipReader, err := zip.NewReader(buffReader, int64(len(buffer)))
-	if err != nil {
-		errorsOut <- err
-		return
-	}
-
-	//open the file inside
-	fileHandle, err := zipReader.File[0].Open()
-	if err != nil {
-		errorsOut <- err
-		return
-	}
-	defer fileHandle.Close()
 
 	lineReader := bufio.NewScanner(fileHandle)
 	for lineReader.Scan() {

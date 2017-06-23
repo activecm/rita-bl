@@ -18,10 +18,11 @@ func TestCustomBL(t *testing.T) {
 	b := blacklist.NewBlacklist(database.NewMongoDB,
 		"localhost:27017", "rita-blacklist-TEST-Custom",
 		func(err error) { panic(err) })
+
 	//clear the db
 	b.SetLists()
 	b.Update()
-	getData := func() io.ReadCloser {
+	getData := func() (io.ReadCloser, error) {
 		buf := new(bytes.Buffer)
 		buf.WriteString(`
 192.168.0.1
@@ -29,11 +30,11 @@ func TestCustomBL(t *testing.T) {
 192.168.0.3
 10.10.10.10
 `)
-		return nopCloser{buf}
+		return nopCloser{buf}, nil
 	}
 
 	//get the data
-	customBL := NewCustomList(list.BlacklistedIPType, "test", getData)
+	customBL := NewLineSeperatedList(list.BlacklistedIPType, "test", 86400, getData)
 	b.SetLists(customBL)
 	b.Update()
 

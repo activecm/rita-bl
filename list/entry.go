@@ -2,6 +2,7 @@ package list
 
 import (
 	"errors"
+	"fmt"
 	"net"
 	"net/url"
 	"strconv"
@@ -48,10 +49,10 @@ func validateHostname(hostname string) error {
 		return !((r >= 'A' && r <= 'Z') ||
 			(r >= 'a' && r <= 'z') ||
 			(r >= '0' && r <= '9') ||
-			r == '-' || r == '.')
+			r == '-' || r == '.' || r == '_')
 	})
 	if specialCharIdx != -1 {
-		return errors.New("hostnames must contain only 'a'-'z', 'A'-'Z', '0'-'9', the minus sign, and the dot")
+		return fmt.Errorf("invalid char %c found in hostname label", hostname[specialCharIdx])
 	}
 
 	labels := strings.Split(hostname, ".")

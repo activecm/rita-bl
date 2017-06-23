@@ -7,42 +7,46 @@ import (
 	"github.com/ocmdev/rita-blacklist2/list"
 )
 
-//customList gathers blacklisted ip addresses from myip.ms
-type customList struct {
+//lineSeperatedList gathers blacklisted ip addresses from myip.ms
+type lineSeperatedList struct {
 	meta       list.Metadata
-	dataSource func() io.ReadCloser
+	dataSource func() (io.ReadCloser, error)
 }
 
-//NewCustomList returns a new customList object
-func NewCustomList(entryType list.BlacklistedEntryType, name string,
-	dataFactory func() io.ReadCloser) list.List {
-	return &customList{
+//NewLineSeperatedList returns a new lineSeperatedList object
+func NewLineSeperatedList(entryType list.BlacklistedEntryType, name string,
+	cacheTime int64, dataFactory func() (io.ReadCloser, error)) list.List {
+	return &lineSeperatedList{
 		meta: list.Metadata{
 			Types:     []list.BlacklistedEntryType{entryType},
 			Name:      name,
-			CacheTime: 86400,
+			CacheTime: cacheTime,
 		},
 		dataSource: dataFactory,
 	}
 }
 
 //GetMetadata returns the Metadata associated with this blacklist
-func (m *customList) GetMetadata() list.Metadata {
+func (m *lineSeperatedList) GetMetadata() list.Metadata {
 	return m.meta
 }
 
 //SetMetadata sets the Metadata associated with this blacklist
-func (m *customList) SetMetadata(meta list.Metadata) {
+func (m *lineSeperatedList) SetMetadata(meta list.Metadata) {
 	m.meta = meta
 }
 
 //FetchData fetches the BlacklistedEntries associated with this list.
 //This function must run the fetch in the background and immediately
 //return a map of channels to read from.
-func (m *customList) FetchData(entryMap list.BlacklistedEntryMap, errorsOut chan<- error) {
+func (m *lineSeperatedList) FetchData(entryMap list.BlacklistedEntryMap, errorsOut chan<- error) {
 	entryType := m.GetMetadata().Types[0]
 	defer close(entryMap[entryType])
-	reader := m.dataSource()
+	reader, err := m.dataSource()
+	if err != nil {
+		errorsOut <- err
+		return
+	}
 	defer reader.Close()
 	scanner := bufio.NewScanner(reader)
 	for scanner.Scan() {
