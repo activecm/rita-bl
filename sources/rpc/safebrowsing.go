@@ -4,8 +4,8 @@ import (
 	"io"
 
 	"github.com/google/safebrowsing"
-	"github.com/ocmdev/rita-blacklist2/database"
-	"github.com/ocmdev/rita-blacklist2/list"
+	"github.com/ocmdev/rita-bl/database"
+	"github.com/ocmdev/rita-bl/list"
 )
 
 type safeBrowsingURLsRPC struct {

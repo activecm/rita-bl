@@ -3,7 +3,7 @@ package database
 import (
 	"sync"
 
-	"github.com/ocmdev/rita-blacklist2/list"
+	"github.com/ocmdev/rita-bl/list"
 )
 
 type (

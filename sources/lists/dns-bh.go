@@ -3,8 +3,8 @@ package lists
 import (
 	"io"
 
-	"github.com/ocmdev/rita-blacklist2/list"
-	"github.com/ocmdev/rita-blacklist2/sources/lists/util"
+	"github.com/ocmdev/rita-bl/list"
+	"github.com/ocmdev/rita-bl/sources/lists/util"
 )
 
 //NewDNSBHList returns a new DNSBHList object

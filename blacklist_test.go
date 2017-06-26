@@ -4,9 +4,9 @@ import (
 	"os"
 	"testing"
 
-	"github.com/ocmdev/rita-blacklist2/database"
-	"github.com/ocmdev/rita-blacklist2/list"
-	"github.com/ocmdev/rita-blacklist2/sources/mock"
+	"github.com/ocmdev/rita-bl/database"
+	"github.com/ocmdev/rita-bl/list"
+	"github.com/ocmdev/rita-bl/sources/mock"
 )
 
 //nolint: golint

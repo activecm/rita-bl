@@ -5,9 +5,9 @@ import (
 	"io"
 	"testing"
 
-	blacklist "github.com/ocmdev/rita-blacklist2"
-	"github.com/ocmdev/rita-blacklist2/database"
-	"github.com/ocmdev/rita-blacklist2/list"
+	blacklist "github.com/ocmdev/rita-bl"
+	"github.com/ocmdev/rita-bl/database"
+	"github.com/ocmdev/rita-bl/list"
 )
 
 type nopCloser struct{ io.Reader }

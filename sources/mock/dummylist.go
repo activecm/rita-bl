@@ -5,7 +5,7 @@ import (
 	"net"
 	"strings"
 
-	"github.com/ocmdev/rita-blacklist2/list"
+	"github.com/ocmdev/rita-bl/list"
 )
 
 //DummyList provides mock data for rita-blacklist
