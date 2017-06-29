@@ -3,15 +3,19 @@ package lists
 import (
 	"testing"
 
+	"github.com/ocmdev/mgosec"
 	blacklist "github.com/ocmdev/rita-bl"
 	"github.com/ocmdev/rita-bl/database"
 	"github.com/ocmdev/rita-bl/list"
 )
 
 func TestMyIPms(t *testing.T) {
-	b := blacklist.NewBlacklist(database.NewMongoDB,
-		"localhost:27017", "rita-blacklist-TEST-MyIPms",
-		func(err error) { panic(err) })
+	db, err := database.NewMongoDB("localhost:27017", mgosec.None, "rita-blacklist-TEST-MyIPms")
+	if err != nil {
+		t.FailNow()
+	}
+	b := blacklist.NewBlacklist(db, func(err error) { panic(err) })
+
 	//clear the db
 	b.SetLists()
 	b.Update()

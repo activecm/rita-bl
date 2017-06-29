@@ -21,19 +21,13 @@ type (
 
 //NewBlacklist creates a new blacklist controller and connects to the
 //backing database
-func NewBlacklist(dbFactory database.Provider, connectionString string, dataset string, errorHandler func(error)) *Blacklist {
-	b := &Blacklist{
-		db:           dbFactory(),
+func NewBlacklist(db database.Handle, errorHandler func(error)) *Blacklist {
+	return &Blacklist{
+		db:           db,
 		lists:        make([]list.List, 0),
 		rpcs:         make(map[list.BlacklistedEntryType][]rpc.RPC),
 		errorHandler: errorHandler,
 	}
-	err := b.db.Init(connectionString, dataset)
-	if err != nil {
-		errorHandler(err)
-		return nil
-	}
-	return b
 }
 
 //SetLists loads a set of blacklist sources into the blacklist controller

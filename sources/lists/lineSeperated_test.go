@@ -5,6 +5,7 @@ import (
 	"io"
 	"testing"
 
+	"github.com/ocmdev/mgosec"
 	blacklist "github.com/ocmdev/rita-bl"
 	"github.com/ocmdev/rita-bl/database"
 	"github.com/ocmdev/rita-bl/list"
@@ -15,9 +16,11 @@ type nopCloser struct{ io.Reader }
 func (nopCloser) Close() error { return nil }
 
 func TestCustomBL(t *testing.T) {
-	b := blacklist.NewBlacklist(database.NewMongoDB,
-		"localhost:27017", "rita-blacklist-TEST-Custom",
-		func(err error) { panic(err) })
+	db, err := database.NewMongoDB("localhost:27017", mgosec.None, "rita-blacklist-TEST-Custom")
+	if err != nil {
+		t.FailNow()
+	}
+	b := blacklist.NewBlacklist(db, func(err error) { panic(err) })
 
 	//clear the db
 	b.SetLists()

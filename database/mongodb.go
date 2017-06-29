@@ -1,8 +1,12 @@
 package database
 
 import (
+	"crypto/tls"
+	"crypto/x509"
+	"io/ioutil"
 	"sync"
 
+	"github.com/ocmdev/mgosec"
 	"github.com/ocmdev/rita-bl/list"
 	mgo "gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
@@ -17,20 +21,41 @@ type mongoDB struct {
 const listsCollection string = "lists"
 
 //NewMongoDB returns a new mongoDB Handle
-func NewMongoDB() Handle {
-	return new(mongoDB)
-}
+func NewMongoDB(conn string, authMech mgosec.AuthMechanism,
+	db string) (Handle, error) {
+	m := new(mongoDB)
+	m.database = db
 
-//Init opens the connection to the backing database
-func (m *mongoDB) Init(connectionString string, database string) error {
-	m.database = database
-
-	ssn, err := mgo.Dial(connectionString)
+	ssn, err := mgosec.DialInsecure(conn, authMech)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	m.session = ssn
-	return nil
+	return m, nil
+}
+
+//NewSecureMongoDB returns a new mongoDB Handle encrypted with TLS
+func NewSecureMongoDB(conn string, authMech mgosec.AuthMechanism,
+	db string, caFile string) (Handle, error) {
+	tlsConf := &tls.Config{}
+	if len(caFile) > 0 {
+		pem, err := ioutil.ReadFile(caFile)
+		if err != nil {
+			return nil, err
+		}
+		tlsConf.RootCAs = x509.NewCertPool()
+		tlsConf.RootCAs.AppendCertsFromPEM(pem)
+	}
+
+	m := new(mongoDB)
+	m.database = db
+
+	ssn, err := mgosec.Dial(conn, authMech, tlsConf)
+	if err != nil {
+		return nil, err
+	}
+	m.session = ssn
+	return m, nil
 }
 
 //GetRegisteredLists retrieves all of the lists registered with the database

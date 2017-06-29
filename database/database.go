@@ -10,9 +10,6 @@ type (
 	//Handle provides an interface for using a databae to hold
 	//blacklist information
 	Handle interface {
-		//Init opens the connection to the backing database
-		Init(connectionString string, database string) error
-
 		//GetRegisteredLists retrieves all of the lists registered with the database
 		GetRegisteredLists() ([]list.Metadata, error)
 
@@ -50,7 +47,4 @@ type (
 		//ExtraData contains extra information this blacklist source provides
 		ExtraData map[string]interface{}
 	}
-
-	//Provider is a factory function for database.Handles
-	Provider func() Handle
 )
