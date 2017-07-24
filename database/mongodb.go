@@ -2,8 +2,6 @@ package database
 
 import (
 	"crypto/tls"
-	"crypto/x509"
-	"io/ioutil"
 	"sync"
 
 	"github.com/ocmdev/mgosec"
@@ -36,17 +34,7 @@ func NewMongoDB(conn string, authMech mgosec.AuthMechanism,
 
 //NewSecureMongoDB returns a new mongoDB Handle encrypted with TLS
 func NewSecureMongoDB(conn string, authMech mgosec.AuthMechanism,
-	db string, caFile string) (Handle, error) {
-	tlsConf := &tls.Config{}
-	if len(caFile) > 0 {
-		pem, err := ioutil.ReadFile(caFile)
-		if err != nil {
-			return nil, err
-		}
-		tlsConf.RootCAs = x509.NewCertPool()
-		tlsConf.RootCAs.AppendCertsFromPEM(pem)
-	}
-
+	db string, tlsConf *tls.Config) (Handle, error) {
 	m := new(mongoDB)
 	m.database = db
 
