@@ -4,7 +4,7 @@ import (
 	"bufio"
 	"io"
 
-	"github.com/ocmdev/rita-bl/list"
+	"github.com/activecm/rita-bl/list"
 )
 
 //lineSeperatedList gathers blacklisted ip addresses from myip.ms

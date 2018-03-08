@@ -4,9 +4,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ocmdev/rita-bl/database"
-	"github.com/ocmdev/rita-bl/list"
-	"github.com/ocmdev/rita-bl/sources/rpc"
+	"github.com/activecm/rita-bl/database"
+	"github.com/activecm/rita-bl/list"
+	"github.com/activecm/rita-bl/sources/rpc"
 )
 
 type (

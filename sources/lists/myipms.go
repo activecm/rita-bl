@@ -7,8 +7,8 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/ocmdev/rita-bl/list"
-	"github.com/ocmdev/rita-bl/sources/lists/util"
+	"github.com/activecm/rita-bl/list"
+	"github.com/activecm/rita-bl/sources/lists/util"
 )
 
 //myIPmsList gathers blacklisted ip addresses from myip.ms

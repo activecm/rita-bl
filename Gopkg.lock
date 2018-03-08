@@ -26,7 +26,7 @@
   revision = "fe6951d7ef01b4e46d3008e8a08b55bcdf3c0ee6"
 
 [[projects]]
-  name = "github.com/ocmdev/mgosec"
+  name = "github.com/activecm/mgosec"
   packages = ["."]
   revision = "af42afa3ec74143661a863bdae62d36a93c6eca7"
   version = "v0.1.0"

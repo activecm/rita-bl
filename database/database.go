@@ -3,7 +3,7 @@ package database
 import (
 	"sync"
 
-	"github.com/ocmdev/rita-bl/list"
+	"github.com/activecm/rita-bl/list"
 )
 
 type (

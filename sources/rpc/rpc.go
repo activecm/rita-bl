@@ -1,8 +1,8 @@
 package rpc
 
 import (
-	"github.com/ocmdev/rita-bl/database"
-	"github.com/ocmdev/rita-bl/list"
+	"github.com/activecm/rita-bl/database"
+	"github.com/activecm/rita-bl/list"
 )
 
 //RPC is a remote procedure call which can be used to check a given index.
