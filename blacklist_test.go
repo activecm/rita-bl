@@ -4,10 +4,10 @@ import (
 	"os"
 	"testing"
 
-	"github.com/ocmdev/mgosec"
-	"github.com/ocmdev/rita-bl/database"
-	"github.com/ocmdev/rita-bl/list"
-	"github.com/ocmdev/rita-bl/sources/mock"
+	"github.com/activecm/mgosec"
+	"github.com/activecm/rita-bl/database"
+	"github.com/activecm/rita-bl/list"
+	"github.com/activecm/rita-bl/sources/mock"
 )
 
 //nolint: golint

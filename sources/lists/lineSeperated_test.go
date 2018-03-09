@@ -5,10 +5,10 @@ import (
 	"io"
 	"testing"
 
-	"github.com/ocmdev/mgosec"
-	blacklist "github.com/ocmdev/rita-bl"
-	"github.com/ocmdev/rita-bl/database"
-	"github.com/ocmdev/rita-bl/list"
+	"github.com/activecm/mgosec"
+	blacklist "github.com/activecm/rita-bl"
+	"github.com/activecm/rita-bl/database"
+	"github.com/activecm/rita-bl/list"
 )
 
 type nopCloser struct{ io.Reader }

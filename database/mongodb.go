@@ -4,8 +4,8 @@ import (
 	"crypto/tls"
 	"sync"
 
-	"github.com/ocmdev/mgosec"
-	"github.com/ocmdev/rita-bl/list"
+	"github.com/activecm/mgosec"
+	"github.com/activecm/rita-bl/list"
 	mgo "gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )

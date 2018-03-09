@@ -25,7 +25,7 @@
   name = "github.com/google/safebrowsing"
 
 [[constraint]]
-  name = "github.com/ocmdev/mgosec"
+  name = "github.com/activecm/mgosec"
   version = "0.1.0"
 
 [[constraint]]
