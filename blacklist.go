@@ -161,8 +161,6 @@ func updateExistingLists(existingLists []list.List,
 	for _, existingList := range existingLists {
 		meta := existingList.GetMetadata()
 		if list.ShouldFetch(meta) {
-			//kick off fetching in a new thread
-			entryMap := list.FetchAndValidateEntries(existingList, errorsOut)
 			//delete all existing entries and re-add the list
 			err := dbHandle.ClearCache(meta)
 
@@ -171,11 +169,15 @@ func updateExistingLists(existingLists []list.List,
 				continue
 			}
 
+			//kick off fetching in a new thread
+			entryMap := list.FetchAndValidateEntries(existingList, errorsOut)
+
 			wg := new(sync.WaitGroup)
 			for entryType, entryChannel := range entryMap {
 				wg.Add(1)
 				go dbHandle.InsertEntries(entryType, entryChannel, wg, errorsOut)
 			}
+			//InsertEntries only finishes if FetchAndValidateEntries finishes
 			wg.Wait()
 
 			meta.LastUpdate = time.Now().Unix()
@@ -193,9 +195,6 @@ func createNewLists(listsToAdd []list.List,
 	for _, listToAdd := range listsToAdd {
 		meta := listToAdd.GetMetadata()
 		if list.ShouldFetch(listToAdd.GetMetadata()) {
-			//kick off fetching in a new thread
-			entryMap := list.FetchAndValidateEntries(listToAdd, errorsOut)
-
 			//register the list, create, and index the new collections
 			//set the cache to invalid so if the code errors,
 			//the code will reimport it
@@ -209,11 +208,15 @@ func createNewLists(listsToAdd []list.List,
 				continue
 			}
 
+			//kick off fetching in a new thread
+			entryMap := list.FetchAndValidateEntries(listToAdd, errorsOut)
+
 			wg := new(sync.WaitGroup)
 			for entryType, entryChannel := range entryMap {
 				wg.Add(1)
 				go dbHandle.InsertEntries(entryType, entryChannel, wg, errorsOut)
 			}
+			//InsertEntries only finishes if FetchAndValidateEntries finishes
 			wg.Wait()
 
 			//set the cache to valid

@@ -78,9 +78,7 @@ func (m *mongoDB) RegisterList(l list.Metadata) error {
 
 	//create listsCollection if it doesn't exist
 	if !found {
-		err = ssn.DB(m.database).C(listsCollection).Create(&mgo.CollectionInfo{
-			DisableIdIndex: true,
-		})
+		err = ssn.DB(m.database).C(listsCollection).Create(&mgo.CollectionInfo{})
 		if err != nil {
 			return err
 		}
@@ -112,9 +110,7 @@ func (m *mongoDB) RegisterList(l list.Metadata) error {
 
 		//create the collection if it doesn't exist
 		if !found {
-			ssn.DB(m.database).C(string(entryType)).Create(&mgo.CollectionInfo{
-				DisableIdIndex: true,
-			})
+			ssn.DB(m.database).C(string(entryType)).Create(&mgo.CollectionInfo{})
 			ssn.DB(m.database).C(string(entryType)).EnsureIndex(mgo.Index{
 				Key:    []string{"$hashed:index"},
 				Unique: false,
