@@ -21,17 +21,17 @@
 
 
 [[constraint]]
+  name = "github.com/activecm/mgosec"
+  version = "0.1.1"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/globalsign/mgo"
+
+[[constraint]]
   branch = "master"
   name = "github.com/google/safebrowsing"
 
 [[constraint]]
-  name = "github.com/activecm/mgosec"
-  version = "0.1.0"
-
-[[constraint]]
   name = "github.com/stretchr/testify"
-  version = "1.2.0"
-
-[[constraint]]
-  branch = "v2"
-  name = "gopkg.in/mgo.v2"
+  version = "1.2.2"
