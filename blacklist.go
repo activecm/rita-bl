@@ -63,7 +63,11 @@ func (b *Blacklist) Update() {
 	//get the lists to remove from the db
 	metasToRemove := getListsToRemove(b.lists, remoteMetas)
 	for _, metaToRemove := range metasToRemove {
-		b.db.RemoveList(metaToRemove)
+		err = b.db.RemoveList(metaToRemove)
+		if err != nil {
+			errorChannel <- err
+			continue
+		}
 	}
 
 	existingLists, listsToAdd := findExistingLists(b.lists, remoteMetas)
@@ -133,7 +137,7 @@ func getListsToRemove(loadedLists []list.List, remoteMetas []list.Metadata) []li
 
 //findExistingLists returns the lists which are in remoteMetas and the lists
 //that are not, in that order. Note: this function has the side effect of
-//loading in the metadata from the database into the loaded lists
+//loading in the metadata LastUpdate field from the database into the loaded lists
 func findExistingLists(loadedLists []list.List, remoteMetas []list.Metadata) ([]list.List, []list.List) {
 	var existingLists []list.List
 	var listsToAdd []list.List
@@ -147,7 +151,11 @@ func findExistingLists(loadedLists []list.List, remoteMetas []list.Metadata) ([]
 			}
 		}
 		if foundMeta != nil {
-			loadedList.SetMetadata(*foundMeta)
+			// update the local metadata with fields stored in DB
+			localMeta := loadedList.GetMetadata()
+			localMeta.LastUpdate = foundMeta.LastUpdate
+			loadedList.SetMetadata(localMeta)
+
 			existingLists = append(existingLists, loadedList)
 		} else {
 			listsToAdd = append(listsToAdd, loadedList)
