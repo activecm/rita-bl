@@ -59,6 +59,11 @@ func (m *lineSeparatedList) FetchData(entryMap list.BlacklistedEntryMap, errorsO
 		if len(line) == 0 {
 			continue
 		}
+		//skip commented lines
+		if line[0] == '#' {
+			continue
+		}
+
 		entryMap[entryType] <- list.NewBlacklistedEntry(line, m)
 	}
 }
