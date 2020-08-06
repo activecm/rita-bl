@@ -32,6 +32,7 @@ func TestCustomBL(t *testing.T) {
 192.168.0.2
 192.168.0.3
 10.10.10.10
+#127.0.0.1
 `)
 		return nopCloser{buf}, nil
 	}
@@ -43,6 +44,17 @@ func TestCustomBL(t *testing.T) {
 
 	blIP := "10.10.10.10"
 	if len(b.CheckEntries(list.BlacklistedIPType, blIP)[blIP]) < 1 {
+		t.Fail()
+	}
+
+	//neither of the following strings should match
+	blIP = "127.0.0.1"
+	if len(b.CheckEntries(list.BlacklistedIPType, blIP)[blIP]) > 0 {
+		t.Fail()
+	}
+
+	blIP = "#127.0.0.1"
+	if len(b.CheckEntries(list.BlacklistedIPType, blIP)[blIP]) > 0 {
 		t.Fail()
 	}
 }
