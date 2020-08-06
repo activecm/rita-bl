@@ -37,7 +37,7 @@ func TestCustomBL(t *testing.T) {
 	}
 
 	//get the data
-	customBL := NewLineSeperatedList(list.BlacklistedIPType, "test", 86400, getData)
+	customBL := NewLineSeparatedList(list.BlacklistedIPType, "test", 86400, getData)
 	b.SetLists(customBL)
 	b.Update()
 

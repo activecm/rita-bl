@@ -9,7 +9,7 @@ import (
 
 //NewDNSBHList returns a new DNSBHList object
 func NewDNSBHList() list.List {
-	return NewLineSeperatedList(
+	return NewLineSeparatedList(
 		list.BlacklistedHostnameType,
 		"dns-bh",
 		86400,
