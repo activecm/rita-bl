@@ -240,6 +240,8 @@ func (c *clickhouseDB) InsertEntries(entryType list.BlacklistedEntryType,
 		if err != nil {
 			errorsOut <- err
 		}
+	} else {
+		bulk.Abort()
 	}
 
 }
