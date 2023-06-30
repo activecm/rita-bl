@@ -45,6 +45,6 @@ type (
 		//List is the source list
 		List string
 		//ExtraData contains extra information this blacklist source provides
-		ExtraData map[string]interface{}
+		ExtraData map[string]string
 	}
 )

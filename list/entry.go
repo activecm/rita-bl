@@ -17,7 +17,7 @@ type (
 		//List is the source list
 		List List
 		//ExtraData contains extra information this blacklist source provides
-		ExtraData map[string]interface{}
+		ExtraData map[string]string
 	}
 
 	//BlacklistedEntryType is a string representing which type of data
@@ -25,20 +25,20 @@ type (
 	BlacklistedEntryType string
 )
 
-//NewBlacklistedEntry creates a new BlacklistedEntry
+// NewBlacklistedEntry creates a new BlacklistedEntry
 func NewBlacklistedEntry(index string, source List) BlacklistedEntry {
 	return BlacklistedEntry{
 		Index:     index,
 		List:      source,
-		ExtraData: make(map[string]interface{}),
+		ExtraData: make(map[string]string),
 	}
 }
 
-//entryTypeValidators is a map of entry types to functions which validate them
+// entryTypeValidators is a map of entry types to functions which validate them
 var entryTypeValidators map[BlacklistedEntryType]func(string) error
 
-//BlacklistedHostnameType should be added to the metadata types array
-//in order to return hostnames from a list
+// BlacklistedHostnameType should be added to the metadata types array
+// in order to return hostnames from a list
 const BlacklistedHostnameType BlacklistedEntryType = "hostname"
 
 func validateHostname(hostname string) error {
@@ -71,8 +71,8 @@ func validateHostname(hostname string) error {
 	return nil
 }
 
-//BlacklistedIPType should be added to the metadata types array
-//in order to return ips from a list
+// BlacklistedIPType should be added to the metadata types array
+// in order to return ips from a list
 const BlacklistedIPType BlacklistedEntryType = "ip"
 
 func validateIP(ip string) error {
@@ -83,8 +83,8 @@ func validateIP(ip string) error {
 	return nil
 }
 
-//BlacklistedURLType should be added to the metadata types array
-//in order to return hostnames from a list
+// BlacklistedURLType should be added to the metadata types array
+// in order to return hostnames from a list
 const BlacklistedURLType BlacklistedEntryType = "url"
 
 func validateURL(str string) error {
