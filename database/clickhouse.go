@@ -46,7 +46,7 @@ func chSelectEntriesByIndexQuery(entryType list.BlacklistedEntryType) string {
 	tmplInputs := struct{ EntryType string }{
 		EntryType: string(entryType),
 	}
-	chCreateEntryTableQueryTemplate.Execute(&tmplBuff, tmplInputs)
+	chSelectEntriesByIndexQueryTemplate.Execute(&tmplBuff, tmplInputs)
 	return tmplBuff.String()
 }
 
