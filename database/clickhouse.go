@@ -253,7 +253,7 @@ func (c *clickhouseDB) FindEntries(dataType list.BlacklistedEntryType, index str
 	var entryMatches []BlacklistResult
 	var entryBuff BlacklistResult
 
-	rowIter, err := c.connection.Query(c.ctx, findEntriesQuery, clickhouse.Named("Index", index))
+	rowIter, err := c.connection.Query(c.ctx, findEntriesQuery, clickhouse.Named("index", index))
 	if err != nil {
 		return []BlacklistResult{}, nil
 	}

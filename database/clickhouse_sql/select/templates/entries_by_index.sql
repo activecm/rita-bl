@@ -5,4 +5,4 @@ SELECT
 FROM 
     {{.EntryType}}
 WHERE
-    Index=@Index
+    Index=@index
