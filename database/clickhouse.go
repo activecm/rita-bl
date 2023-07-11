@@ -108,10 +108,12 @@ func (c *clickhouseDB) GetRegisteredLists() ([]list.Metadata, error) {
 
 	for rowIter.Next() {
 		listBuff = list.Metadata{}
-		err = rowIter.Scan(&listBuff.Name, &listBuff.Types, &listBuff.LastUpdate, &listBuff.CacheTime)
+		var lastUpdateTime time.Time
+		err = rowIter.Scan(&listBuff.Name, &listBuff.Types, &lastUpdateTime, &listBuff.CacheTime)
 		if err != nil {
 			return []list.Metadata{}, err
 		}
+		listBuff.LastUpdate = lastUpdateTime.Unix()
 		lists = append(lists, listBuff)
 	}
 
@@ -139,7 +141,12 @@ func (c *clickhouseDB) RegisterList(l list.Metadata) error {
 		return err
 	}
 
-	err = batch.Append(l.Name, l.Types, time.Unix(l.LastUpdate, 0), l.CacheTime)
+	typesAsStringArr := make([]string, 0, len(l.Types))
+	for _, entryType := range l.Types {
+		typesAsStringArr = append(typesAsStringArr, string(entryType))
+	}
+
+	err = batch.Append(l.Name, typesAsStringArr, time.Unix(l.LastUpdate, 0), l.CacheTime)
 	if err != nil {
 		return err
 	}
@@ -179,7 +186,12 @@ func (c *clickhouseDB) UpdateListMetadata(l list.Metadata) error {
 		return err
 	}
 
-	err = batch.Append(l.Name, l.Types, time.Unix(l.LastUpdate, 0), l.CacheTime)
+	typesAsStringArr := make([]string, 0, len(l.Types))
+	for _, entryType := range l.Types {
+		typesAsStringArr = append(typesAsStringArr, string(entryType))
+	}
+
+	err = batch.Append(l.Name, typesAsStringArr, time.Unix(l.LastUpdate, 0), l.CacheTime)
 	if err != nil {
 		return err
 	}

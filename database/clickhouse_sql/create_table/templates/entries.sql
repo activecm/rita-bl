@@ -1,10 +1,10 @@
-CREATE IF NOT EXISTS TABLE {{.EntryType}}(
+CREATE TABLE IF NOT EXISTS {{.EntryType}}(
     List LowCardinality(String),
-    Index String,
-    ExtraData Map(String, String) DEFAULT {}
+    Idx String,
+    ExtraData Map(String, String)
 ) ENGINE = ReplacingMergeTree()
 ORDER BY (
-    List, Index
+    List, Idx
 ) PRIMARY KEY (
-    List, Index
+    List, Idx
 )

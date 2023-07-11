@@ -1,4 +1,4 @@
-CREATE IF NOT EXISTS TABLE Lists(
+CREATE TABLE IF NOT EXISTS Lists(
     Name LowCardinality(String),
     Types Array(LowCardinality(String)),
     LastCachedAt DateTime,

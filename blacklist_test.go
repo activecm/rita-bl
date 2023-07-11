@@ -1,28 +1,47 @@
 package blacklist
 
 import (
-	"os"
+	"context"
+	"fmt"
 	"testing"
 
+	"github.com/ClickHouse/clickhouse-go/v2"
 	"github.com/activecm/mgosec"
 	"github.com/activecm/rita-bl/database"
 	"github.com/activecm/rita-bl/list"
 	"github.com/activecm/rita-bl/sources/mock"
 )
 
-//nolint: golint
+// nolint: golint
 var __blacklistTestHandle *Blacklist
 
-func TestMain(m *testing.M) {
+func TestMongoDBDummyList(t *testing.T) {
 	db, err := database.NewMongoDB("localhost:27017", mgosec.None, "rita-blacklist-TEST")
 	if err != nil {
-		os.Exit(-1)
+		t.FailNow()
 	}
+
 	__blacklistTestHandle = NewBlacklist(db, func(err error) { panic(err) })
-	os.Exit(m.Run())
+
+	RunDummyListTests(t)
 }
 
-func TestDummyList(t *testing.T) {
+func TestClickhouseDummyList(t *testing.T) {
+	db, err := database.NewClickhouseDB(context.Background(), []string{"127.0.0.1:9000"}, clickhouse.Auth{
+		Database: "default",
+		Username: "default",
+		Password: "",
+	}, func(s string) { fmt.Println(s) }, "ritabl")
+	if err != nil {
+		t.FailNow()
+	}
+
+	__blacklistTestHandle = NewBlacklist(db, func(err error) { panic(err) })
+
+	RunDummyListTests(t)
+}
+
+func RunDummyListTests(t *testing.T) {
 	t.Run("Update Indeterminate", UpdateDummyList)
 	t.Run("Delete", DeleteDummyList)
 	t.Run("Empty IP Search", EmptyIPSearch)

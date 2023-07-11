@@ -1,8 +1,8 @@
 SELECT 
     List,
-    Index,
+    Idx,
     ExtraData
 FROM 
     {{.EntryType}}
 WHERE
-    Index=@index
+    Idx=@index
