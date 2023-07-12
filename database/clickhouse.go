@@ -4,15 +4,21 @@ import (
 	"bytes"
 	"context"
 	_ "embed"
+	"errors"
 	"fmt"
 	"net"
+	"regexp"
 	"sync"
 	"text/template"
 	"time"
 
 	clickhouse "github.com/ClickHouse/clickhouse-go/v2"
+	driver "github.com/ClickHouse/clickhouse-go/v2/lib/driver"
+
 	"github.com/activecm/rita-bl/list"
 )
+
+var ErrInvalidName = errors.New("database and table names must consists of alphanumeric characters and underscores")
 
 const chListTable string = "Lists"
 
@@ -57,6 +63,35 @@ type clickhouseDB struct {
 }
 
 func NewClickhouseDB(ctx context.Context, addr []string, auth clickhouse.Auth, clientLogger func(string), db string) (Handle, error) {
+	// validate the database name with regex since we can't use a prepared statement for creating databases
+	dbNameMatchesSafeChars, err := regexp.Match("^[a-zA-Z0-9_][a-zA-Z0-9_]*$", []byte(db))
+	if !dbNameMatchesSafeChars || err != nil {
+		return nil, ErrInvalidName
+	}
+
+	initConn, err := newConn(addr, auth, clientLogger)
+	if err != nil {
+		return nil, err
+	}
+
+	err = initConn.Exec(ctx, "CREATE DATABASE IF NOT EXISTS "+db)
+	if err != nil {
+		return nil, err
+	}
+
+	mainConn, err := newConn(addr, clickhouse.Auth{Username: auth.Username, Password: auth.Password, Database: db}, clientLogger)
+	if err != nil {
+		return nil, err
+	}
+
+	return &clickhouseDB{
+		ctx:        ctx,
+		connection: mainConn,
+		database:   db,
+	}, err
+}
+
+func newConn(addr []string, auth clickhouse.Auth, clientLogger func(string)) (driver.Conn, error) {
 	conn, err := clickhouse.Open(&clickhouse.Options{
 		Addr: addr,
 		Auth: auth,
@@ -88,11 +123,7 @@ func NewClickhouseDB(ctx context.Context, addr []string, auth clickhouse.Auth, c
 			},
 		},
 	})
-	return &clickhouseDB{
-		ctx:        ctx,
-		connection: conn,
-		database:   db,
-	}, err
+	return conn, err
 }
 
 // GetRegisteredLists retrieves all of the lists registered with the database
